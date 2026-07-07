@@ -1,27 +1,19 @@
-from flask import Flask 
-from .extensions import db , login_manager ,mail 
+# app/__init__.py
 
-from blueprints import auth_bp ,admin_bp ,staff_bp  ,customer_bp
+from flask import Flask
+from app.extensions import db, login_manager
 from config import DevelopmentConfig
 
 
-
-def Create_app():
-    
-    # Creating Flask application instance
+def create_app():
     app = Flask(__name__)
-    
-    # App configuration
     app.config.from_object(DevelopmentConfig)
-    
-    # register Blueprints
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(admin_bp)
-    app.register_blueprint(staff_bp)
-    app.register_blueprint(customer_bp)
-    
-    
-    
-    
-    
+
+    db.init_app(app)
+    login_manager.init_app(app)
+
+    with app.app_context():
+        from app.models import create_tables
+        create_tables()          
+
     return app

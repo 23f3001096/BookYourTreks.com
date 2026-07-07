@@ -1,7 +1,7 @@
 from flask import Flask, send_from_directory
-from app import Create_app
+from app import create_app
 
-app = Create_app()
+app = create_app()
 
 # Change Jinja's default tags so they don't clash with Vue
 

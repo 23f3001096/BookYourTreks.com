@@ -12,4 +12,7 @@ staff_bp = Blueprint('admin', __name__, url_prefix='/api/staff')
 # customer related Apis
 customer_bp = Blueprint('customer', __name__, url_prefix='/api/customer')
 
+# Reviews realted Apis
+review_bp = Blueprint('review', __name__, url_prefix='/api/review')
+
 
