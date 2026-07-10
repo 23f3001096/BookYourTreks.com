@@ -29,7 +29,7 @@ class User(db.Model, UserMixin, TimestampMixin):
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
 
-    # ---------- Auth helpers ----------
+    #  Auth helpers 
     def set_password(self, raw_password):
         self.password = generate_password_hash(raw_password)
 
@@ -38,11 +38,12 @@ class User(db.Model, UserMixin, TimestampMixin):
 
     # Flask-Login checks this automatically on login_user() and every session load.
     # Overrides UserMixin's default (which always returns True).
+    
     @property
     def is_active(self) -> bool: # ignore 
         return self.active and not self.blocked
 
-    # ---------- Role check helpers ----------
+    #  Role check helpers 
     def is_admin(self):
         return self.role == RoleEnum.ADMIN
 
@@ -52,7 +53,7 @@ class User(db.Model, UserMixin, TimestampMixin):
     def is_customer(self):
         return self.role == RoleEnum.CUSTOMER
 
-    # ---------- Account management ----------
+    #  Account management 
     def block(self):
         self.blocked = True
         db.session.commit()
@@ -69,7 +70,7 @@ class User(db.Model, UserMixin, TimestampMixin):
         self.active = True
         db.session.commit()
 
-    # ---------- Serialization ----------
+    #  Serialization 
     def to_dict(self):
         return {
             "id": self.id,

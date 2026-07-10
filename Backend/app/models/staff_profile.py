@@ -1,6 +1,5 @@
-# ============================================
 # app/models/staff_profile.py
-# ============================================
+
 from app.extensions import db
 from app.models.base import TimestampMixin
 import enum
@@ -24,7 +23,6 @@ class StaffProfile(db.Model, TimestampMixin):
     def __init__(self, **kwargs):
         super(StaffProfile, self).__init__(**kwargs)
 
-    # ---------- Helpers ----------
     def is_blocked(self):
         return self.status == StaffStatusEnum.BLOCKED
 

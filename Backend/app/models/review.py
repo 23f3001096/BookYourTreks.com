@@ -1,6 +1,5 @@
-# ============================================
 # app/models/review.py
-# ============================================
+
 from app.extensions import db
 from app.models.base import TimestampMixin
 
@@ -20,7 +19,7 @@ class Review(db.Model, TimestampMixin):
     def __init__(self, **kwargs):
         super(Review, self).__init__(**kwargs)
 
-    # ---------- Helpers ----------
+    # Helper Methods
     def is_valid_rating(self):
         return 1 <= self.rating <= 5
 

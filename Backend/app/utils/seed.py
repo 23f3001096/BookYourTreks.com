@@ -1,12 +1,10 @@
-# ============================================
 # app/utils/seed.py
-# ============================================
+
 from app.extensions import db
 from app.models.user import User, RoleEnum
 
 
 def insert_admin():
-    """Programmatically create the single superuser admin. No registration route allowed."""
     if not User.query.filter_by(email="admin@gmail.com").first():
         admin = User(
             email="admin@gmail.com",

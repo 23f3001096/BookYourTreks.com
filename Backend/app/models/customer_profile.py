@@ -1,6 +1,6 @@
-# ============================================
+
 # app/models/customer_profile.py
-# ============================================
+
 from app.extensions import db
 from app.models.base import TimestampMixin
 

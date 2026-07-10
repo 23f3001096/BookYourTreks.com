@@ -1,6 +1,5 @@
-# ============================================
 # app/models/__init__.py
-# ============================================
+
 from app.extensions import db
 
 # import all models so SQLAlchemy registers their tables

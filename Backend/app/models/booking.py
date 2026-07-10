@@ -1,6 +1,5 @@
-# ============================================
 # app/models/booking.py
-# ============================================
+
 from app.extensions import db
 from app.models.base import TimestampMixin
 import enum
@@ -54,7 +53,6 @@ class Booking(db.Model, TimestampMixin):
 
     @staticmethod
     def already_booked(user_id, trek_id):
-        """Use before creating a booking to block duplicates."""
         return Booking.query.filter_by(
             user_id=user_id, trek_id=trek_id, status=BookingStatusEnum.BOOKED
         ).first() is not None
