@@ -3,9 +3,14 @@ from app import create_app
 
 app = create_app()
 
-
 @app.route("/")
-def home():
-    return send_from_directory('../../Frontend',"index.html")
+@app.route("/<path:path>") 
+def home(path=None):
+    return send_from_directory('../../Frontend', "index.html")
 
-app.run(debug=True)
+@app.route("/static/<path:filename>")
+def serve_static(filename):
+    return send_from_directory('../../Frontend', filename)
+
+if __name__ == '__main__':
+    app.run(debug=True)

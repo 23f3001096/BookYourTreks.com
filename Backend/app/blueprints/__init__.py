@@ -1,18 +1,8 @@
-from flask import Blueprint
-
-# Auth Blueprint for Authentications apis
-auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
-
-# Admin relateed Apis
-admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
-
-#  Staff related Apis
-staff_bp = Blueprint('admin', __name__, url_prefix='/api/staff')
-
-# customer related Apis
-customer_bp = Blueprint('customer', __name__, url_prefix='/api/customer')
-
-# Reviews realted Apis
-review_bp = Blueprint('review', __name__, url_prefix='/api/review')
-
-
+# ============================================
+# app/blueprints/__init__.py
+# ============================================
+from app.blueprints.auth_blueprint import auth_bp
+from app.blueprints.admin_blueprint import admin_bp
+from app.blueprints.staff_blueprint import staff_bp
+from app.blueprints.customer_blueprint import customer_bp
+from app.blueprints.review_blueprint import review_bp

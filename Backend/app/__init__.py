@@ -9,7 +9,7 @@ from config import Config
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__,static_folder=None)
     app.config.from_object(Config)
 
     # ---------- Init extensions ----------
