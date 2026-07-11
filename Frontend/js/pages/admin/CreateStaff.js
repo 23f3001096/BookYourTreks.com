@@ -1,0 +1,1 @@
+const CreateStaff = { template: `<div>Handled inside Manage Staff page</div>` };
