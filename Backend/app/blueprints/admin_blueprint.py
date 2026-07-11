@@ -19,6 +19,8 @@ from app.utils.validators import (
     validate_date,
     validate_positive_int,
 )
+from app.tasks.notification_tasks import send_staff_welcome_email,send_trek_assignment_email
+
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -140,6 +142,8 @@ def add_staff():
         )
         db.session.add(staff_profile)
         db.session.commit()
+        
+        send_staff_welcome_email.delay(email, name, password)
 
         return success_response(data=staff_profile.to_dict(), message="Staff added successfully", status_code=201)
     except Exception as e:
@@ -187,6 +191,13 @@ def assign_staff_to_trek(staff_id):
     try:
         trek.assigned_staff_id = staff.id
         db.session.commit()
+        send_trek_assignment_email.delay(
+                                        staff.user.email,
+                                        staff.user.name,
+                                        trek.name,
+                                        trek.location,
+                                        trek.start_date.strftime('%Y-%m-%d')
+                                    )
         return success_response(data=trek.to_dict(), message="Staff assigned to trek successfully")
     except Exception as e:
         db.session.rollback()
@@ -365,6 +376,13 @@ def create_trek():
     if end_date < start_date:
         return error_response("end_date cannot be before start_date", 400)
 
+    expected_duration = (end_date - start_date).days
+    if expected_duration != duration:
+        return error_response(
+            f"Duration mismatch: dates suggest {expected_duration} days, but duration_days is {duration}",
+            400
+        )
+
     try:
         trek = Trek(
             name=data.get("name").strip(),
@@ -426,18 +444,16 @@ def edit_trek(trek_id):
             if err:
                 return error_response(err, 400)
             trek.available_slots = slots
-
-        if "start_date" in data:
-            start_date, err = validate_date(data["start_date"])
-            if err:
-                return error_response(err, 400)
-            trek.start_date = start_date
-
-        if "end_date" in data:
-            end_date, err = validate_date(data["end_date"])
-            if err:
-                return error_response(err, 400)
-            trek.end_date = end_date
+        
+        if "start_date" in data and "end_date" in data:
+            if trek.end_date < trek.start_date:
+                return error_response("end_date cannot be before start_date", 400)
+            expected_duration = (trek.end_date - trek.start_date).days
+            if expected_duration != trek.duration_days:
+                return error_response(
+                    f"Duration mismatch: dates suggest {expected_duration} days, but duration_days is {trek.duration_days}",
+                    400
+                )
 
         db.session.commit()
         return success_response(data=trek.to_dict(), message="Trek updated successfully")

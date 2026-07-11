@@ -63,6 +63,7 @@ class Booking(db.Model, TimestampMixin):
             "user_id": self.user_id,
             "trek_id": self.trek_id,
             "trek_name": self.trek.name if self.trek else None,
+            "trek_location": self.trek.location if self.trek else None,   
             "status": self.status.value,
             "payment_status": self.payment_status.value,
             "booking_date": self.created_at.strftime('%Y-%m-%d') if self.created_at else None,

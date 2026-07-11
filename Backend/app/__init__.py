@@ -44,12 +44,13 @@ def create_app():
         return error_response("Login required", 401)
 
     # ---------- Register blueprints ----------
-    from app.blueprints import admin_bp, auth_bp, staff_bp, customer_bp, review_bp
+    from app.blueprints import admin_bp, auth_bp, staff_bp, customer_bp, review_bp,payment_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(staff_bp, url_prefix='/api/staff')
     app.register_blueprint(customer_bp, url_prefix='/api/customer')
     app.register_blueprint(review_bp, url_prefix='/api/reviews')
+    app.register_blueprint(payment_bp, url_prefix='/api/customer/payment') 
 
     # ---------- Create DB tables + seed admin ----------
     with app.app_context():

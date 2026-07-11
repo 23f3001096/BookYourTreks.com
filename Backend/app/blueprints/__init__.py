@@ -6,3 +6,4 @@ from app.blueprints.admin_blueprint import admin_bp
 from app.blueprints.staff_blueprint import staff_bp
 from app.blueprints.customer_blueprint import customer_bp
 from app.blueprints.review_blueprint import review_bp
+from app.blueprints.payment_blueprint import payment_bp

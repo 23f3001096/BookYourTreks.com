@@ -7,13 +7,18 @@ from flask_login import current_user
 from app.extensions import db
 from app.middleware.auth_middleware import customer_required
 from app.models.trek import Trek, TrekStatusEnum, DifficultyEnum
-from app.models.booking import Booking, BookingStatusEnum
+from app.models.booking import Booking, BookingStatusEnum ,PaymentStatusEnum
 from app.models.customer_profile import CustomerProfile
 from app.utils.response import success_response, error_response
 from app.utils.cache import get_cache, set_cache, delete_cache
 from app.tasks.export_tasks import generate_csv_export
 from app.celery_app import celery
 from flask import send_file
+from app.tasks.notification_tasks import send_booking_confirmation_email
+from app.tasks.export_tasks import generate_csv_export
+from app.celery_app import celery
+from flask import send_file
+import os
 
 
 customer_bp = Blueprint('customer', __name__)
@@ -152,15 +157,6 @@ def trek_details(trek_id):
 # ============================================
 # BOOKINGS
 # ============================================
-@customer_bp.route('/bookings', methods=['GET'])
-def bookings():
-    try:
-        my_bookings = Booking.query.filter_by(user_id=current_user.id).all()
-        return success_response(data=[b.to_dict() for b in my_bookings])
-    except Exception as e:
-        return error_response(f"Failed to fetch bookings: {str(e)}", 500)
-
-
 @customer_bp.route('/bookings', methods=['POST'])
 def book_trek():
     data = request.get_json(silent=True)
@@ -172,39 +168,64 @@ def book_trek():
     if not trek:
         return error_response("Trek not found", 404)
 
-    # rule: only when trek status is Open
     if not trek.is_open_for_booking():
         return error_response("This trek is not open for booking", 400)
 
-    # rule: prevent duplicate bookings
-    if Booking.already_booked(current_user.id, trek_id):
-        return error_response("You have already booked this trek", 409)
+    existing = Booking.query.filter_by(user_id=current_user.id, trek_id=trek_id).first()
 
+    if existing:
+        if existing.status == BookingStatusEnum.BOOKED:
+            return error_response("You have already booked this trek", 409)
+
+        
+        try:
+            existing.status = BookingStatusEnum.BOOKED
+            existing.payment_status = PaymentStatusEnum.PENDING
+            trek.reduce_slot()  
+
+            try:
+                from app.tasks.notification_tasks import send_booking_confirmation_email
+                send_booking_confirmation_email.delay(
+                    current_user.email, current_user.name, trek.name, existing.id
+                )
+            except Exception as mail_err:
+                print(f"Email task failed (non-blocking): {mail_err}")
+
+            delete_cache("treks:available")
+            delete_cache(f"trek:{trek_id}")
+            return success_response(data=existing.to_dict(), message="Trek booked successfully", status_code=201)
+
+        except ValueError as ve:
+            db.session.rollback()
+            return error_response(str(ve), 400)
+        except Exception as e:
+            db.session.rollback()
+            return error_response(f"Booking failed: {str(e)}", 500)
+
+    # Case 2: Fresh New booking 
     try:
-        booking = Booking(
-            user_id=current_user.id,
-            trek_id=trek_id,
-            status=BookingStatusEnum.BOOKED,
-        )
+        booking = Booking(user_id=current_user.id, trek_id=trek_id, status=BookingStatusEnum.BOOKED)
         db.session.add(booking)
-        trek.reduce_slot()   # ye khud commit bhi kar deta hai (model method)
-        db.session.commit()
+        trek.reduce_slot()   
 
-        # NOTE: booking confirmation email — Celery task baad mein wire hoga yaha
-        # send_booking_confirmation.delay(current_user.email, trek.name)
+        try:
+            from app.tasks.notification_tasks import send_booking_confirmation_email
+            send_booking_confirmation_email.delay(
+                current_user.email, current_user.name, trek.name, booking.id
+            )
+        except Exception as mail_err:
+            print(f"Email task failed (non-blocking): {mail_err}")
 
-        # cache invalidate — slots badal gaye, purani cached value stale ho gayi
         delete_cache("treks:available")
         delete_cache(f"trek:{trek_id}")
-
         return success_response(data=booking.to_dict(), message="Trek booked successfully", status_code=201)
+
     except ValueError as ve:
         db.session.rollback()
         return error_response(str(ve), 400)
     except Exception as e:
         db.session.rollback()
         return error_response(f"Booking failed: {str(e)}", 500)
-
 
 @customer_bp.route('/bookings/<int:booking_id>/cancel', methods=['POST'])
 def cancel_bookings(booking_id):
@@ -239,11 +260,6 @@ def history():
         return success_response(data=[b.to_dict() for b in all_bookings])
     except Exception as e:
         return error_response(f"Failed to fetch history: {str(e)}", 500)
-
-# customer_blueprint.py mein ye 2 functions replace kar
-from app.tasks.export_tasks import generate_csv_export
-from app.celery_app import celery
-from flask import send_file
 
 
 @customer_bp.route('/history/export', methods=['POST'])

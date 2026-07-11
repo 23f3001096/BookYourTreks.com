@@ -15,6 +15,9 @@ class Secret_keyConfig:
 class DatabaseConfig:
     SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(BASE_DIR, 'trekking.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'connect_args': {'timeout': 15}
+    }
 
 
 class SessionConfig:
