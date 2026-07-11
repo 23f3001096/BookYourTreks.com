@@ -1,0 +1,66 @@
+:root {
+    --primary: #0f766e;
+    --primary-dark: #0d5c56;
+    --accent: #2563eb;
+    --bg-light: #f0fdf9;
+    --sidebar-bg: #0f172a;
+}
+
+body {
+    background-color: var(--bg-light);
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+.text-brand { color: var(--primary); }
+.bg-brand { background-color: var(--primary); }
+
+.navbar-brand-custom {
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    color: white;
+}
+
+.sidebar {
+    background-color: var(--sidebar-bg);
+    min-height: 100vh;
+    width: 240px;
+}
+.sidebar .nav-link {
+    color: #cbd5e1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+}
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background-color: var(--primary);
+    color: white;
+}
+
+.card-trek {
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+    transition: transform 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.card-trek:hover { transform: translateY(-4px); }
+
+.hero-section {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    padding: 100px 20px;
+}
+
+.stat-card {
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
