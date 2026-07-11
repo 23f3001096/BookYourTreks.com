@@ -71,10 +71,10 @@ def edit_profile():
 
     try:
         if "name" in data and data["name"].strip():
-            current_user.name = data["name"].strip()
+            current_user.name = data["name"].strip()   # <-- User table pe update
 
         if "contact_number" in data and data["contact_number"].strip():
-            staff.contact_number = data["contact_number"].strip()
+            staff.contact_number = data["contact_number"].strip()  # <-- StaffProfile table pe update
 
         db.session.commit()
         return success_response(data=staff.to_dict(), message="Profile updated")
@@ -100,7 +100,6 @@ def assigned_treks():
 
 
 def _get_owned_trek_or_error(trek_id, staff):
-    """Helper — trek fetch karta hai AUR check karta hai ki ye isi staff ko assign hai."""
     trek = Trek.query.get(trek_id)
     if not trek:
         return None, error_response("Trek not found", 404)
@@ -132,6 +131,9 @@ def update_slots(trek_id):
     if err:
         return err
 
+    if trek.status == TrekStatusEnum.COMPLETED:
+        return error_response("This trek is already completed and cannot be modified. Contact admin for changes.", 403)
+
     data = request.get_json(silent=True)
     if not data or "available_slots" not in data:
         return error_response("available_slots is required", 400)
@@ -147,8 +149,7 @@ def update_slots(trek_id):
     except Exception as e:
         db.session.rollback()
         return error_response(f"Failed to update slots: {str(e)}", 500)
-
-
+    
 @staff_bp.route('/treks/<int:trek_id>/status', methods=['PUT'])
 def update_status(trek_id):
     staff = _get_current_staff_profile()
@@ -158,6 +159,9 @@ def update_status(trek_id):
     trek, err = _get_owned_trek_or_error(trek_id, staff)
     if err:
         return err
+
+    if trek.status == TrekStatusEnum.COMPLETED:
+        return error_response("This trek is already completed and cannot be modified. Contact admin for changes.", 403)
 
     data = request.get_json(silent=True)
     if not data or "status" not in data:
@@ -200,6 +204,9 @@ def mark_trek_started(trek_id):
     if err:
         return err
 
+    if trek.status == TrekStatusEnum.COMPLETED:
+        return error_response("This trek is already completed and cannot be modified.", 403)
+
     try:
         trek.mark_started()
         return success_response(data=trek.to_dict(), message="Trek marked as started")
@@ -218,9 +225,11 @@ def mark_completed_trek(trek_id):
     if err:
         return err
 
+    if trek.status == TrekStatusEnum.COMPLETED:
+        return error_response("This trek is already marked as completed.", 400)
+
     try:
         trek.mark_completed()
-        # saari active bookings bhi completed mark kar de
         active_bookings = Booking.query.filter_by(trek_id=trek_id, status=BookingStatusEnum.BOOKED).all()
         for b in active_bookings:
             b.status = BookingStatusEnum.COMPLETED

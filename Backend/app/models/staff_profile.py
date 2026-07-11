@@ -41,7 +41,7 @@ class StaffProfile(db.Model, TimestampMixin):
         return {
             "id": self.id,
             "user_id": self.user_id,
-            "name": self.user.name if self.user else None,
+            "name": self.user.name if self.user else None,   # <-- ye line honi chahiye
             "contact_number": self.contact_number,
             "status": self.status.value,
             "assigned_treks": self.assigned_trek_count(),

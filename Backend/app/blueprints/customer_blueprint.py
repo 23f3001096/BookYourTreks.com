@@ -253,14 +253,13 @@ def cancel_bookings(booking_id):
 # ============================================
 # HISTORY
 # ============================================
-@customer_bp.route('/history', methods=['GET'])
-def history():
+@customer_bp.route('/bookings', methods=['GET'])
+def bookings():
     try:
-        all_bookings = Booking.query.filter_by(user_id=current_user.id).all()
-        return success_response(data=[b.to_dict() for b in all_bookings])
+        my_bookings = Booking.query.filter_by(user_id=current_user.id).all()
+        return success_response(data=[b.to_dict() for b in my_bookings])
     except Exception as e:
-        return error_response(f"Failed to fetch history: {str(e)}", 500)
-
+        return error_response(f"Failed to fetch bookings: {str(e)}", 500)
 
 @customer_bp.route('/history/export', methods=['POST'])
 def export_history():
