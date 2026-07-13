@@ -44,14 +44,14 @@ cd BookYourTreks.com/Backend
 ### 2. Create and activate a virtual environment
 
 ```bash
-python3 -m venv .venv
+uv venv .venv
 source .venv/bin/activate
 ```
 
 ### 3. Install dependencies
 
 ```bash
-pip install -r requirements.txt --break-system-packages
+uv pip install python-dotenv flask celery flask_sqlalchemy flask_login redis flask_mail
 ```
 
 ### 4. Set up environment variables
