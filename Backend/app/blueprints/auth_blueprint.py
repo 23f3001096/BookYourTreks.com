@@ -137,4 +137,5 @@ def logout():
 @auth_bp.route('/me', methods=['GET'])
 @login_required
 def get_current_user():
+    print(request.remote_addr,"---------------------------------------------------------")
     return success_response(data=current_user.to_dict())

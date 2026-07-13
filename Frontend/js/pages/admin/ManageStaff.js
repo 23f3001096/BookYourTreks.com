@@ -48,22 +48,33 @@ const ManageStaff = {
                 </form>
             </div>
 
-            <!-- Assign Trek Form -->
+            <!-- Assign / Unassign Trek Panel -->
             <div v-if="assigningStaffId" class="card p-4 mb-4 shadow-sm border-primary">
-                <h5 class="mb-3">Assign Trek</h5>
+                <h5 class="mb-3">Manage Trek Assignment</h5>
+
+                <div v-if="currentStaffTreks.length > 0" class="mb-3">
+                    <p class="text-muted mb-2" style="font-size:13px">Currently assigned treks:</p>
+                    <div v-for="t in currentStaffTreks" :key="t.id"
+                        class="d-flex justify-content-between align-items-center border rounded p-2 mb-1">
+                        <span>{{ t.name }} — {{ t.location }}</span>
+                        <button class="btn btn-sm btn-outline-danger" @click="unassign(t.id)">Unassign</button>
+                    </div>
+                </div>
+                <p v-else class="text-muted mb-3" style="font-size:13px">No treks currently assigned.</p>
+
                 <div class="row g-3 align-items-end">
                     <div class="col-md-8">
-                        <label class="form-label">Select Trek</label>
+                        <label class="form-label">Assign New Trek</label>
                         <select v-model="selectedTrekId" class="form-select">
                             <option value="" disabled>Choose a trek</option>
-                            <option v-for="t in allTreks" :key="t.id" :value="t.id">
+                            <option v-for="t in availableTreksToAssign" :key="t.id" :value="t.id">
                                 {{ t.name }} — {{ t.location }}
                             </option>
                         </select>
                     </div>
                     <div class="col-md-4 d-flex gap-2">
                         <button class="btn btn-primary" @click="confirmAssign">Assign</button>
-                        <button class="btn btn-outline-secondary" @click="assigningStaffId = null">Cancel</button>
+                        <button class="btn btn-outline-secondary" @click="assigningStaffId = null">Close</button>
                     </div>
                 </div>
             </div>
@@ -113,6 +124,14 @@ const ManageStaff = {
             assigningStaffId: null, selectedTrekId: '', allTreks: []
         };
     },
+    computed: {
+        currentStaffTreks() {
+            return this.allTreks.filter(t => t.assigned_staff_id === this.assigningStaffId);
+        },
+        availableTreksToAssign() {
+            return this.allTreks.filter(t => t.assigned_staff_id !== this.assigningStaffId);
+        }
+    },
     async mounted() {
         await this.loadStaff();
     },
@@ -147,17 +166,29 @@ const ManageStaff = {
             }
         },
         async blockStaff(id) {
-            try { await api.blockStaff(id); await this.loadStaff(); }
-            catch (err) { alert(err.message); }
+            try {
+                await api.blockStaff(id);
+                await this.loadStaff();
+            } catch (err) {
+                alert(err.message);
+            }
         },
         async activateStaff(id) {
-            try { await api.activateStaff(id); await this.loadStaff(); }
-            catch (err) { alert(err.message); }
+            try {
+                await api.activateStaff(id);
+                await this.loadStaff();
+            } catch (err) {
+                alert(err.message);
+            }
         },
         async removeStaff(id) {
             if (!confirm('Remove this staff member?')) return;
-            try { await api.removeStaff(id); await this.loadStaff(); }
-            catch (err) { alert(err.message); }
+            try {
+                await api.removeStaff(id);
+                await this.loadStaff();
+            } catch (err) {
+                alert(err.message);
+            }
         },
         async search() {
             if (!this.searchQuery.trim()) return;
@@ -179,11 +210,20 @@ const ManageStaff = {
             this.allTreks = res.data;
         },
         async confirmAssign() {
-            if (!this.selectedTrekId) return alert('Please select a trek first');
+            if (!this.selectedTrekId) return alert('Select a trek first');
             try {
                 await api.assignStaffToTrek(this.assigningStaffId, this.selectedTrekId);
-                alert('Trek assigned successfully!');
-                this.assigningStaffId = null;
+                await this.openAssignForm(this.assigningStaffId);
+                await this.loadStaff();
+            } catch (err) {
+                alert(err.message);
+            }
+        },
+        async unassign(trekId) {
+            if (!confirm('Unassign this trek from staff?')) return;
+            try {
+                await api.unassignStaffFromTrek(trekId);
+                await this.openAssignForm(this.assigningStaffId);
                 await this.loadStaff();
             } catch (err) {
                 alert(err.message);

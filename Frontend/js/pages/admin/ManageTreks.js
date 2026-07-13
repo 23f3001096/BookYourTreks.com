@@ -14,7 +14,6 @@ const ManageTreks = {
                 <button class="btn btn-outline-secondary" @click="clearSearch" v-if="searched"><i class="bi bi-x"></i></button>
             </div>
 
-            <!-- Create/Edit Form -->
             <div v-if="showForm" class="card p-4 mb-4 shadow-sm">
                 <h5 class="mb-3">{{ editingId ? 'Edit Trek' : 'Create New Trek' }}</h5>
                 <form @submit.prevent="submitForm" class="row g-3">
@@ -51,6 +50,14 @@ const ManageTreks = {
                     <div class="col-md-3">
                         <label class="form-label">End Date</label>
                         <input v-model="form.end_date" type="date" class="form-control" required />
+                    </div>
+
+                    <div class="col-md-6" v-if="editingId">
+                        <label class="form-label">Assigned Staff</label>
+                        <select v-model="form.assigned_staff_id" class="form-select">
+                            <option value="">No staff assigned</option>
+                            <option v-for="s in staffList" :key="s.id" :value="s.id">{{ s.name }}</option>
+                        </select>
                     </div>
 
                     <div v-if="formError" class="col-12">
@@ -112,13 +119,15 @@ const ManageTreks = {
     `,
     data() {
         return {
-            treks: [], loading: true, showForm: false, editingId: null, saving: false, formError: '',
+            treks: [], staffList: [], loading: true, showForm: false, editingId: null, saving: false, formError: '',
             searchQuery: '', searched: false,
-            form: { name: '', location: '', difficulty: '', duration_days: null, available_slots: null, start_date: '', end_date: '' }
+            form: { name: '', location: '', difficulty: '', duration_days: null, available_slots: null, start_date: '', end_date: '', assigned_staff_id: '' }
         };
     },
     async mounted() {
         await this.loadTreks();
+        const staffRes = await api.listStaff();
+        this.staffList = staffRes.data;
     },
     methods: {
         async loadTreks() {
@@ -130,7 +139,7 @@ const ManageTreks = {
         openCreateForm() {
             this.editingId = null;
             this.formError = '';
-            this.form = { name: '', location: '', difficulty: '', duration_days: null, available_slots: null, start_date: '', end_date: '' };
+            this.form = { name: '', location: '', difficulty: '', duration_days: null, available_slots: null, start_date: '', end_date: '', assigned_staff_id: '' };
             this.showForm = true;
         },
         openEditForm(trek) {
@@ -139,7 +148,8 @@ const ManageTreks = {
             this.form = {
                 name: trek.name, location: trek.location, difficulty: trek.difficulty,
                 duration_days: trek.duration_days, available_slots: trek.available_slots,
-                start_date: trek.start_date, end_date: trek.end_date
+                start_date: trek.start_date, end_date: trek.end_date,
+                assigned_staff_id: trek.assigned_staff_id || ''
             };
             this.showForm = true;
         },
@@ -155,7 +165,8 @@ const ManageTreks = {
                 if (this.editingId) {
                     await api.editTrek(this.editingId, this.form);
                 } else {
-                    await api.createTrek(this.form);
+                    const { assigned_staff_id, ...createPayload } = this.form;
+                    await api.createTrek(createPayload);
                 }
                 this.showForm = false;
                 this.editingId = null;
@@ -186,7 +197,7 @@ const ManageTreks = {
         async search() {
             if (!this.searchQuery.trim()) return;
             this.loading = true;
-            const res = await api.searchTreks(this.searchQuery);
+            const res = await api.adminSearchTreks(this.searchQuery);
             this.treks = res.data;
             this.searched = true;
             this.loading = false;

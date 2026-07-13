@@ -13,7 +13,9 @@ def send_daily_reminders():
     from app.models.booking import Booking, BookingStatusEnum
 
     tomorrow = date.today() + timedelta(days=1)
-    upcoming_treks = Trek.query.filter_by(start_date=tomorrow).all()
+    upcoming_treks = Trek.query.filter_by().all()
+    print("*************************")
+    print(upcoming_treks)
 
     sent_count = 0
     for trek in upcoming_treks:

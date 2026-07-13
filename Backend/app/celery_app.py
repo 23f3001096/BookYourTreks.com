@@ -20,7 +20,7 @@ def init_celery(app):
     celery.conf.beat_schedule = {
         'daily-trek-reminders': {
             'task': 'app.tasks.reminder_tasks.send_daily_reminders',
-            'schedule': crontab(hour=8, minute=0),  
+            'schedule': crontab(hour=23, minute=0),  
         },
         'monthly-activity-report': {
             'task': 'app.tasks.report_tasks.generate_monthly_report',

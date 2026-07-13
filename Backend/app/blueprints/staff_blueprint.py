@@ -11,6 +11,7 @@ from app.models.staff_profile import StaffProfile
 from app.models.booking import Booking, BookingStatusEnum
 from app.utils.response import success_response, error_response
 from app.utils.validators import validate_positive_int
+from app.utils.cache import delete_cache
 
 staff_bp = Blueprint('staff', __name__)
 
@@ -145,6 +146,9 @@ def update_slots(trek_id):
     try:
         trek.available_slots = slots
         db.session.commit()
+        
+        delete_cache("treks:available")
+        delete_cache(f"trek:{trek_id}")
         return success_response(data=trek.to_dict(), message="Slots updated successfully")
     except Exception as e:
         db.session.rollback()
@@ -174,6 +178,8 @@ def update_status(trek_id):
     try:
         trek.status = TrekStatusEnum(status_value)
         db.session.commit()
+        delete_cache("treks:available")
+        delete_cache(f"trek:{trek_id}")
         return success_response(data=trek.to_dict(), message="Trek status updated")
     except Exception as e:
         db.session.rollback()
@@ -190,7 +196,7 @@ def view_trekkers(trek_id):
     if err:
         return err
 
-    bookings = Booking.query.filter_by(trek_id=trek_id, status=BookingStatusEnum.BOOKED).all()
+    bookings = Booking.query.filter_by(trek_id=trek_id).all()
     return success_response(data=[b.to_dict() for b in bookings])
 
 
@@ -209,6 +215,8 @@ def mark_trek_started(trek_id):
 
     try:
         trek.mark_started()
+        delete_cache("treks:available")
+        delete_cache(f"trek:{trek_id}")
         return success_response(data=trek.to_dict(), message="Trek marked as started")
     except Exception as e:
         db.session.rollback()
@@ -234,6 +242,8 @@ def mark_completed_trek(trek_id):
         for b in active_bookings:
             b.status = BookingStatusEnum.COMPLETED
         db.session.commit()
+        delete_cache("treks:available")
+        delete_cache(f"trek:{trek_id}")
         return success_response(data=trek.to_dict(), message="Trek marked as completed")
     except Exception as e:
         db.session.rollback()

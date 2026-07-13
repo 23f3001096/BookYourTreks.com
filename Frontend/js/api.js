@@ -70,6 +70,7 @@ const api = {
     updateTrekStatus: (id, status) => apiCall(`/admin/treks/${id}/status`, 'PATCH', { status }),
     adminSearchTreks: (q) => apiCall(`/admin/treks/search?q=${encodeURIComponent(q)}`),
     trekTrekkers: (id) => apiCall(`/admin/treks/${id}/trekkers`),
+    unassignStaffFromTrek: (trekId) => apiCall(`/admin/treks/${trekId}/unassign-staff`, 'POST'),
     listStaff: () => apiCall('/admin/staff'),
     viewStaff: (id) => apiCall(`/admin/staff/${id}`),
     addStaff: (payload) => apiCall('/admin/staff', 'POST', payload),

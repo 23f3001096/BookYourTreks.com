@@ -19,6 +19,7 @@ from app.utils.validators import (
     validate_date,
     validate_positive_int,
 )
+from app.utils.cache import delete_cache
 from app.tasks.notification_tasks import send_staff_welcome_email,send_trek_assignment_email
 
 
@@ -158,11 +159,10 @@ def remove_staff():
         return error_response("Staff not found", 404)
 
     try:
-        # trek se unassign kar de pehle taaki orphan reference na bache
         for trek in staff.treks:
             trek.assigned_staff_id = None
 
-        db.session.delete(staff.user)   # user delete hone se staff_profile bhi cascade nahi hoga automatically, isliye dono delete
+        db.session.delete(staff.user)   
         db.session.delete(staff)
         db.session.commit()
         return success_response(message="Staff removed successfully")
@@ -176,17 +176,26 @@ def assign_staff_to_trek(staff_id):
     data = request.get_json(silent=True)
     if not data or "trek_id" not in data:
         return error_response("trek_id is required", 400)
-
+    
+    trek = Trek.query.get(data["trek_id"])
+    
+    if trek.status == TrekStatusEnum.COMPLETED :
+        return error_response("Trek is already completed cant assign to anyone else", 402)
+    
     staff = StaffProfile.query.get(staff_id)
+    
     if not staff:
         return error_response("Staff not found", 404)
 
     if staff.is_blocked():
         return error_response("Cannot assign trek to a blocked staff", 403)
 
-    trek = Trek.query.get(data["trek_id"])
+    
     if not trek:
         return error_response("Trek not found", 404)
+
+    if trek.assigned_staff_id == staff.id:
+        return error_response("This staff is already assigned to this trek", 409)
 
     try:
         trek.assigned_staff_id = staff.id
@@ -203,6 +212,26 @@ def assign_staff_to_trek(staff_id):
         db.session.rollback()
         return error_response(f"Failed to assign staff: {str(e)}", 500)
 
+@admin_bp.route('/treks/<int:trek_id>/unassign-staff', methods=['POST'])
+def unassign_staff_from_trek(trek_id):
+    trek = Trek.query.get(trek_id)
+    
+    if trek.status == TrekStatusEnum.COMPLETED :
+        return error_response("Trek is already completed cant unsassign", 402)
+    
+    if not trek:
+        return error_response("Trek not found", 404)
+
+    if trek.assigned_staff_id is None:
+        return error_response("No staff is currently assigned to this trek", 400)
+
+    try:
+        trek.assigned_staff_id = None
+        db.session.commit()
+        return success_response(data=trek.to_dict(), message="Staff unassigned from trek successfully")
+    except Exception as e:
+        db.session.rollback()
+        return error_response(f"Failed to unassign staff: {str(e)}", 500)
 
 # ============================================
 # USERS MANAGEMENT
@@ -396,6 +425,7 @@ def create_trek():
         )
         db.session.add(trek)
         db.session.commit()
+        delete_cache("treks:available")
         return success_response(data=trek.to_dict(), message="Trek created successfully", status_code=201)
     except Exception as e:
         db.session.rollback()
@@ -415,6 +445,9 @@ def edit_trek(trek_id):
     trek = Trek.query.get(trek_id)
     if not trek:
         return error_response("Trek not found", 404)
+    
+    if trek.status == TrekStatusEnum.COMPLETED:
+        return error_response("Completed treks cannot be edited. This trek is now a historical record.", 403)
 
     data = request.get_json(silent=True)
     if not data:
@@ -444,7 +477,31 @@ def edit_trek(trek_id):
             if err:
                 return error_response(err, 400)
             trek.available_slots = slots
-        
+
+        if "start_date" in data:
+            start_date, err = validate_date(data["start_date"])
+            if err:
+                return error_response(err, 400)
+            trek.start_date = start_date
+
+        if "end_date" in data:
+            end_date, err = validate_date(data["end_date"])
+            if err:
+                return error_response(err, 400)
+            trek.end_date = end_date
+
+        if "assigned_staff_id" in data:
+            new_staff_id = data["assigned_staff_id"]
+            if new_staff_id in (None, "", "null"):
+                trek.assigned_staff_id = None
+            else:
+                staff = StaffProfile.query.get(new_staff_id)
+                if not staff:
+                    return error_response("Selected staff not found", 404)
+                if staff.is_blocked():
+                    return error_response("Cannot assign trek to a blocked staff", 403)
+                trek.assigned_staff_id = staff.id
+
         if "start_date" in data and "end_date" in data:
             if trek.end_date < trek.start_date:
                 return error_response("end_date cannot be before start_date", 400)
@@ -456,6 +513,8 @@ def edit_trek(trek_id):
                 )
 
         db.session.commit()
+        delete_cache("treks:available")
+        delete_cache(f"trek:{trek_id}") 
         return success_response(data=trek.to_dict(), message="Trek updated successfully")
     except Exception as e:
         db.session.rollback()
@@ -471,6 +530,8 @@ def delete_trek(trek_id):
     try:
         db.session.delete(trek)
         db.session.commit()
+        delete_cache("treks:available")
+        delete_cache(f"trek:{trek_id}")
         return success_response(message="Trek deleted successfully")
     except Exception as e:
         db.session.rollback()
@@ -482,6 +543,13 @@ def update_trek_status(trek_id):
     trek = Trek.query.get(trek_id)
     if not trek:
         return error_response("Trek not found", 404)
+    
+    if trek.status == TrekStatusEnum.COMPLETED:
+        return error_response(
+            "This trek is already completed. Completed treks cannot be reopened or modified — "
+            "create a new trek if you need to run it again.",
+            403
+        )
 
     data = request.get_json(silent=True)
     if not data or "status" not in data:
@@ -494,6 +562,8 @@ def update_trek_status(trek_id):
     try:
         trek.status = TrekStatusEnum(status_value)
         db.session.commit()
+        delete_cache("treks:available")
+        delete_cache(f"trek:{trek_id}")
         return success_response(data=trek.to_dict(), message="Trek status updated")
     except Exception as e:
         db.session.rollback()
@@ -503,17 +573,19 @@ def update_trek_status(trek_id):
 @admin_bp.route('/treks/search', methods=['GET'])
 def search_trek():
     query = request.args.get('q', '').strip()
-    location = request.args.get('location', '').strip()
-    difficulty = request.args.get('difficulty', '').strip()
+    # location = request.args.get('location', '').strip()
+    # difficulty = request.args.get('difficulty', '').strip()
 
     try:
         filters = []
         if query:
             filters.append(Trek.name.ilike(f"%{query}%"))
-        if location:
-            filters.append(Trek.location.ilike(f"%{location}%"))
-        if difficulty:
-            filters.append(Trek.difficulty == DifficultyEnum(difficulty.lower()))
+            
+        ''' I will look into this route'''
+        # if location:
+        #     filters.append(Trek.location.ilike(f"%{location}%"))
+        # if difficulty:
+        #     filters.append(Trek.difficulty == DifficultyEnum(difficulty.lower()))
 
         results = Trek.query.filter(*filters).all() if filters else Trek.query.all()
         return success_response(data=[t.to_dict() for t in results])
